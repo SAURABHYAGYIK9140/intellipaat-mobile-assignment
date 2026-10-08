@@ -1,0 +1,5 @@
+abstract class AppRoutes {
+  static const login = '/login';
+  static const dashboard = '/dashboard';
+  static const courseDetails = '/course-details';
+}
