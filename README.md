@@ -1,96 +1,84 @@
-# Learning Dashboard — Senior Mobile Technical Assignment
+# Technical Assignment — Learning Dashboard
 
-A robust, offline-first mobile application built with **Flutter** and **GetX State Management**, demonstrating production-grade architecture, predictable reactive state handling, offline persistence, and automated unit testing.
-
----
-
-## 1. Architecture
-### Why Clean Architecture + MVVM with GetX?
-We adopted **Clean Architecture with MVVM** structured into strict unidirectional layers:
-```
-Presentation (Views + Controllers + Bindings)
-      ↓
-Domain (Repository Interfaces + Entities)
-      ↓
-Data (Repository Implementations + Remote & Local DataSources)
-```
-- **Separation of Concerns & Testability**: Business logic and progress calculation are isolated from the UI rendering layer. Controllers interact solely with domain abstraction interfaces (`CourseRepository`, `AuthRepository`), enabling 100% deterministic unit testing with test doubles.
-- **Predictable Reactive State (`StateMixin`)**: Instead of ad-hoc booleans, we utilize GetX's `StateMixin<List<CourseModel>>` to model exact deterministic UI states: `Loading`, `Success`, `Empty`, and `Error`.
-- **Decoupled Dependency Injection**: GetX `Bindings` (`InitialBinding`, `DashboardBinding`, `AuthBinding`) wire dependencies lazily and manage lifecycle teardown automatically without polluting UI widgets.
+Submission for Senior Mobile App Developer technical assignment.
+Built using Flutter and GetX with Clean MVVM architecture, offline persistence, and automated unit tests.
 
 ---
 
-## 2. Offline Support
-### Storing and Loading Offline Data
-- **Offline-First Repository Strategy**:
-  1. **Online**: Remote courses are fetched via `CourseRemoteDataSource`, merged with any locally modified progress, and persisted to `GetStorage` key-value cache.
-  2. **Offline**: When network connectivity is unavailable (or network call fails), `CourseRepositoryImpl` seamlessly falls back to `CourseLocalDataSource.getCachedCourses()`.
-  3. **Progress Recalculation & Mutation**: Toggling a lesson dynamically updates completion, calculates `(completed / total * 100)%`, and writes back to local cache immediately so offline user progress is never lost across app restarts.
-- **Interactive Evaluator Sandbox**: The Dashboard features top toolbar controls allowing the evaluator to toggle between simulated offline, API 500 error, and empty list states on demand.
+### 1. Architecture
+**Why Clean Architecture + MVVM?**
+- **Layer Decoupling**: The codebase is split into Presentation, Domain, and Data layers. The UI widgets only bind to Controllers/ViewModels, and Controllers only communicate through Repository interfaces (`CourseRepository`, `AuthRepository`).
+- **Testability**: Keeping business logic (progress calculation, lesson state changes, offline fallbacks) in pure domain/data units allows straightforward, fast unit tests without inflating the widget tree.
+- **Predictable Reactive State**: Using GetX's `StateMixin` keeps UI states explicit (`Loading`, `Success`, `Empty`, `Error`) rather than juggling scattered boolean flags across widgets.
+- **Dependency Injection**: Dependencies are registered lazily via `Bindings` (`Get.lazyPut`), keeping lifecycle management out of the widget build methods.
 
 ---
 
-## 3. Security
-### Production Authentication Token Storage
-In a production app, mock storage would be replaced with hardware-backed encryption:
-- **Storage Location**:
+### 2. Offline Support
+**How offline data is stored and loaded:**
+- **Local Cache**: Handled via `GetStorage` key-value store in `CourseLocalDataSource`.
+- **Offline-First Strategy**:
+  1. When network is active, courses are loaded from the mock remote datasource, merged with existing local progress, and written to disk.
+  2. When the device is offline (or when a remote request fails), `CourseRepositoryImpl` returns the cached data immediately.
+  3. When a user marks a lesson completed, the controller recalculates the course progress percentage and writes the updated course state directly to local storage.
+- **Testing Offline**: The app bar includes a Wi-Fi toggle button and an options menu (`More` icon) to toggle offline mode, simulate 500 errors, or simulate empty states for testing.
+
+---
+
+### 3. Security
+**Where would authentication tokens be stored in a production application?**
+- In production, plain local storage is not used for tokens. Tokens should be stored in platform-level secure storage:
   - **iOS/macOS**: iOS Keychain via `kSecClassGenericPassword` with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`.
-  - **Android**: Android Keystore via EncryptedSharedPreferences (AES-256-GCM hardware-backed MasterKey).
-  - **Flutter Plugin**: `flutter_secure_storage`.
-- **Token Lifecycle & Network Security**:
-  - Store tokens as ephemeral access tokens with automatic silent refresh via HTTP `401 Unauthorized` interceptors.
-  - Implement **SSL Pinning** (using Certificate/Public Key hashes) to prevent Man-in-the-Middle (MITM) attacks.
-  - Prevent tokens from leaking into crash reports, logs, or unencrypted backups (`allowBackup="false"`).
+  - **Android**: Android Keystore backed by `EncryptedSharedPreferences` (AES-256 GCM).
+  - **Flutter**: Using `flutter_secure_storage`.
+- Access tokens should be short-lived with an automated refresh token rotation flow handled via an HTTP interceptor.
+- For API communication, SSL Pinning (public key pinning) should be enabled to prevent MITM attacks.
 
 ---
 
-## 4. Scale (1 Million Users + Hundreds of Courses)
-To scale the application to 1M+ active users and large catalogs:
-1. **Server-Driven Pagination & Cursor Pagination**: Shift from bulk array responses to cursor-based infinite scroll (e.g. `pageSize=20`) to minimize mobile memory footprint and payload size.
-2. **HTTP Caching with ETags / `304 Not Modified`**: Use Conditional GET requests with HTTP ETags / `If-None-Match` headers so clients only download payloads when the course catalog actually changes, reducing server egress by ~80%.
-3. **Embedded Relational/Object Database**: Migrate from single JSON key-value cache to an indexed SQLite (`drift`) or Isar/ObjectBox database for sub-millisecond querying, multi-table relations (Course ↔ Module ↔ Lesson), and incremental transactional diffs.
-4. **CDN Edge Caching**: Distribute static course syllabus metadata and media assets via Cloudflare / CloudFront edge nodes close to end-users.
+### 4. Scale
+**If this app had 1 million users and hundreds of courses, what would you improve?**
+1. **Pagination & Lazy Loading**: Replace full-catalog fetching with cursor-based pagination (e.g. 20 courses per page) to reduce network payload and client memory consumption.
+2. **Local Database Migration**: Replace simple JSON file storage with an embedded relational database (SQLite via `drift` or Room/CoreData) with indexed fields for fast querying, filtering, and incremental sync.
+3. **HTTP Caching**: Implement conditional requests using `ETag` and `If-None-Match` headers so the client receives `304 Not Modified` when course data hasn't changed.
+4. **CDN & Edge Caching**: Offload course syllabus, instructor metadata, and multimedia assets to CDN edge servers.
 
 ---
 
-## 5. Second Platform Transition
-### How to implement this in Native Android (Kotlin / Jetpack Compose) & iOS/macOS (Swift / SwiftUI)
+### 5. Second Platform Implementation
+**How this architecture maps to native Android and iOS/macOS:**
 
-#### Native Android (Kotlin + Jetpack Compose)
-- **UI**: Jetpack Compose (`@Composable CourseDashboardScreen`, `LazyColumn`, `LinearProgressIndicator`).
-- **State Management**: Android Architecture Components `ViewModel` exposing `StateFlow<CourseUiState>` with sealed classes (`Loading`, `Success`, `Empty`, `Error`).
-- **Offline Storage**: **Room Database** (`@Entity`, `@Dao`) with Flow queries for automatic reactive SQLite updates.
-- **DI & Networking**: **Dagger / Hilt** for dependency injection and **Retrofit + OkHttp** for API requests.
+- **Android (Kotlin / Jetpack Compose)**:
+  - **UI**: Jetpack Compose (`LazyColumn`, `LinearProgressIndicator`).
+  - **State**: Android Architecture Components `ViewModel` exposing `StateFlow<UiState>` with sealed classes (`Loading`, `Success`, `Empty`, `Error`).
+  - **Persistence**: **Room Database** (`@Dao`, `@Entity`) with Coroutine Flow for reactive database queries.
+  - **DI & Network**: **Hilt** and **Retrofit + OkHttp**.
 
-#### Native iOS/macOS (Swift + SwiftUI)
-- **UI**: SwiftUI (`List`, `ProgressView`, `@Observable` or `@StateObject`).
-- **State Management**: `ObservableObject` / Swift 5.9 `@Observable` with `@Published var state: CourseState`.
-- **Offline Storage**: **SwiftData** or **CoreData** with SQLite persistent store for offline persistence.
-- **DI & Networking**: Protocol-oriented dependency injection with `URLSession` and `async/await` actors.
+- **iOS / macOS (Swift / SwiftUI)**:
+  - **UI**: SwiftUI (`List`, `ProgressView`).
+  - **State**: `@Observable` (or `@StateObject` with `ObservableObject`) managing state enums.
+  - **Persistence**: **SwiftData** or **CoreData** with SQLite store.
+  - **DI & Network**: Protocol-oriented DI with native `URLSession` async/await.
 
 ---
 
-## Quick Start & Verification
+### Running the Project
 
-### Run Automated Unit Tests:
+#### Unit Tests
 ```bash
 flutter test
 ```
 
-### Run Static Analysis:
+#### Run on Device / Simulator
 ```bash
-flutter analyze
-```
-
-### Run on Connected Device / Simulator:
-```bash
-# Run on macOS desktop:
+# macOS Desktop
 flutter run -d macos
 
-# Or run on Android emulator:
+# Android Emulator
 flutter run -d emulator-5554
 ```
 
-### Credentials for Demo:
-- **Default Valid Login**: `learner@example.com` / `password123` *(Tap "Valid Login" chip on login screen)*
-- **Simulate Login Error**: Password `wrongpassword` *(Tap "Invalid Login" chip)*
+#### Demo Credentials
+- **Email**: `learner@example.com`
+- **Password**: `password123`
+*(Invalid password for error testing: `wrongpassword`)*
