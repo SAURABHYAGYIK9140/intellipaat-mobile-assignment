@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 import 'package:learning_dashboard/core/network/api_result.dart';
 import 'package:learning_dashboard/core/network/network_info.dart';
 import 'package:learning_dashboard/data/datasources/course_local_datasource.dart';
@@ -56,25 +57,31 @@ class FakeCourseLocalDataSource implements CourseLocalDataSource {
 }
 
 class FakeNetworkInfo implements NetworkInfo {
-  bool connected = true;
+  final RxBool _connectedRx = true.obs;
+
+  bool get connected => _connectedRx.value;
+  set connected(bool val) => _connectedRx.value = val;
 
   @override
-  bool get isConnected => connected;
+  RxBool get isConnectedRx => _connectedRx;
 
   @override
-  bool get isSimulatedOffline => !connected;
+  bool get isConnected => _connectedRx.value;
 
   @override
-  Stream<bool> get onConnectivityChanged => Stream.value(connected);
+  bool get isSimulatedOffline => !_connectedRx.value;
+
+  @override
+  Stream<bool> get onConnectivityChanged => _connectedRx.stream;
 
   @override
   void setSimulatedOffline(bool offline) {
-    connected = !offline;
+    _connectedRx.value = !offline;
   }
 
   @override
   void toggleOffline() {
-    setSimulatedOffline(!isSimulatedOffline);
+    _connectedRx.value = !_connectedRx.value;
   }
 }
 

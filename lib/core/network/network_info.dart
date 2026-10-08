@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 abstract class NetworkInfo {
   bool get isConnected;
+  RxBool get isConnectedRx;
   Stream<bool> get onConnectivityChanged;
   void setSimulatedOffline(bool offline);
   bool get isSimulatedOffline;
@@ -14,7 +15,10 @@ class NetworkInfoImpl extends GetxService implements NetworkInfo {
   final Connectivity _connectivity;
   final RxBool _isDeviceOnline = true.obs;
   final RxBool _isSimulatedOffline = false.obs;
-  final StreamController<bool> _connectivityController = StreamController<bool>.broadcast();
+
+  @override
+  final RxBool isConnectedRx = true.obs;
+
   StreamSubscription<List<ConnectivityResult>>? _subscription;
 
   NetworkInfoImpl({Connectivity? connectivity})
@@ -29,54 +33,52 @@ class NetworkInfoImpl extends GetxService implements NetworkInfo {
   Future<void> _initConnectivity() async {
     try {
       final results = await _connectivity.checkConnectivity();
-      _updateConnectionState(results);
+      _handleConnectivityResults(results);
     } catch (_) {
-      // In testing environments or unsupported platforms, assume connected
-      _isDeviceOnline.value = true;
-      _connectivityController.add(isConnected);
+      // In tests or mock environments without platform channel
+      _syncStatus();
     }
 
-    _subscription = _connectivity.onConnectivityChanged.listen(_updateConnectionState);
+    _subscription = _connectivity.onConnectivityChanged.listen(_handleConnectivityResults);
   }
 
-  void _updateConnectionState(List<ConnectivityResult> results) {
-    final hasConnection = results.any(
-      (result) =>
-          result == ConnectivityResult.wifi ||
-          result == ConnectivityResult.mobile ||
-          result == ConnectivityResult.ethernet ||
-          result == ConnectivityResult.vpn,
-    );
+  void _handleConnectivityResults(List<ConnectivityResult> results) {
+    final hasActiveNetwork = results.isNotEmpty &&
+        results.any((result) => result != ConnectivityResult.none);
 
-    _isDeviceOnline.value = hasConnection;
-    _connectivityController.add(isConnected);
+    _isDeviceOnline.value = hasActiveNetwork;
+    _syncStatus();
+  }
+
+  void _syncStatus() {
+    final connected = _isDeviceOnline.value && !_isSimulatedOffline.value;
+    isConnectedRx.value = connected;
   }
 
   @override
   bool get isSimulatedOffline => _isSimulatedOffline.value;
 
   @override
-  bool get isConnected => _isDeviceOnline.value && !_isSimulatedOffline.value;
+  bool get isConnected => isConnectedRx.value;
 
   @override
-  Stream<bool> get onConnectivityChanged => _connectivityController.stream;
+  Stream<bool> get onConnectivityChanged => isConnectedRx.stream;
 
   @override
   void setSimulatedOffline(bool offline) {
     _isSimulatedOffline.value = offline;
-    _connectivityController.add(isConnected);
+    _syncStatus();
   }
 
   @override
   void toggleOffline() {
     _isSimulatedOffline.value = !_isSimulatedOffline.value;
-    _connectivityController.add(isConnected);
+    _syncStatus();
   }
 
   @override
   void onClose() {
     _subscription?.cancel();
-    _connectivityController.close();
     super.onClose();
   }
 }

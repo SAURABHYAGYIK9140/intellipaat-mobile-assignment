@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:get/get.dart';
 import '../../core/network/api_result.dart';
 import '../../core/network/network_info.dart';
@@ -24,21 +23,23 @@ class DashboardController extends GetxController with StateMixin<List<CourseMode
   final RxBool simulateFailure = false.obs;
   final RxBool simulateEmpty = false.obs;
   final RxBool isRefreshing = false.obs;
-  StreamSubscription<bool>? _connectivitySubscription;
+  Worker? _connectivityWorker;
 
   @override
   void onInit() {
     super.onInit();
     isOffline.value = !_networkInfo.isConnected;
-    _connectivitySubscription = _networkInfo.onConnectivityChanged.listen((connected) {
+
+    // React synchronously to real device or simulated connectivity state changes
+    _connectivityWorker = ever<bool>(_networkInfo.isConnectedRx, (connected) {
       final wasOffline = isOffline.value;
       isOffline.value = !connected;
 
       if (wasOffline && connected) {
-        // Reconnected to internet: auto-sync fresh courses
+        // Automatically sync fresh data when network reconnects
         loadCourses(forceRefresh: true);
       } else if (!connected) {
-        // Disconnected: reload from local offline cache
+        // Disconnected: serve from local cache
         loadCourses();
       }
     });
@@ -74,16 +75,13 @@ class DashboardController extends GetxController with StateMixin<List<CourseMode
   }
 
   void toggleSimulatedOffline() {
-    _networkInfo.setSimulatedOffline(!_networkInfo.isSimulatedOffline);
-    isOffline.value = !_networkInfo.isConnected;
-    // Reload courses with new connectivity state
-    loadCourses();
+    _networkInfo.toggleOffline();
   }
 
   void toggleSimulateFailure() {
     simulateFailure.value = !simulateFailure.value;
     if (simulateFailure.value) {
-      simulateEmpty.value = false; // mutually exclusive for clear test demo
+      simulateEmpty.value = false;
     }
     loadCourses();
   }
@@ -91,7 +89,7 @@ class DashboardController extends GetxController with StateMixin<List<CourseMode
   void toggleSimulateEmpty() {
     simulateEmpty.value = !simulateEmpty.value;
     if (simulateEmpty.value) {
-      simulateFailure.value = false; // mutually exclusive
+      simulateFailure.value = false;
     }
     loadCourses();
   }
@@ -118,7 +116,7 @@ class DashboardController extends GetxController with StateMixin<List<CourseMode
 
   @override
   void onClose() {
-    _connectivitySubscription?.cancel();
+    _connectivityWorker?.dispose();
     super.onClose();
   }
 }
