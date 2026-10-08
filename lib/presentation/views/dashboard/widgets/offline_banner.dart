@@ -60,7 +60,7 @@ class OfflineBanner extends StatelessWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: const Text(
-              'Go Online',
+              'Retry',
               style: TextStyle(
                 color: Color(0xFF92400E),
                 fontWeight: FontWeight.w700,

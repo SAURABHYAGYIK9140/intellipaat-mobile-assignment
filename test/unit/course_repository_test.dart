@@ -71,6 +71,11 @@ class FakeNetworkInfo implements NetworkInfo {
   void setSimulatedOffline(bool offline) {
     connected = !offline;
   }
+
+  @override
+  void toggleOffline() {
+    setSimulatedOffline(!isSimulatedOffline);
+  }
 }
 
 void main() {

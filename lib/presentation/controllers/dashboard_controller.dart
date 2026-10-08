@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import '../../core/network/api_result.dart';
 import '../../core/network/network_info.dart';
@@ -23,13 +24,23 @@ class DashboardController extends GetxController with StateMixin<List<CourseMode
   final RxBool simulateFailure = false.obs;
   final RxBool simulateEmpty = false.obs;
   final RxBool isRefreshing = false.obs;
+  StreamSubscription<bool>? _connectivitySubscription;
 
   @override
   void onInit() {
     super.onInit();
     isOffline.value = !_networkInfo.isConnected;
-    _networkInfo.onConnectivityChanged.listen((connected) {
+    _connectivitySubscription = _networkInfo.onConnectivityChanged.listen((connected) {
+      final wasOffline = isOffline.value;
       isOffline.value = !connected;
+
+      if (wasOffline && connected) {
+        // Reconnected to internet: auto-sync fresh courses
+        loadCourses(forceRefresh: true);
+      } else if (!connected) {
+        // Disconnected: reload from local offline cache
+        loadCourses();
+      }
     });
 
     loadCourses();
@@ -103,5 +114,11 @@ class DashboardController extends GetxController with StateMixin<List<CourseMode
   Future<void> logout() async {
     await _authRepository.logout();
     Get.offAllNamed(AppRoutes.login);
+  }
+
+  @override
+  void onClose() {
+    _connectivitySubscription?.cancel();
+    super.onClose();
   }
 }
