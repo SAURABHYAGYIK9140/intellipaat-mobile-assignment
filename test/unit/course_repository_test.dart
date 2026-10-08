@@ -83,6 +83,9 @@ class FakeNetworkInfo implements NetworkInfo {
   void toggleOffline() {
     _connectedRx.value = !_connectedRx.value;
   }
+
+  @override
+  Future<bool> checkRealConnectivity() async => isConnected;
 }
 
 void main() {
