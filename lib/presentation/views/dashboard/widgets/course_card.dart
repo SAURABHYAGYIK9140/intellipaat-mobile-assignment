@@ -100,12 +100,16 @@ class CourseCard extends StatelessWidget {
                             children: [
                               const Icon(Icons.person_outline_rounded, size: 15, color: AppColors.textSecondary),
                               const SizedBox(width: 4),
-                              Text(
-                                '${AppStrings.instructorPrefix} ${course.instructor}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500,
+                              Expanded(
+                                child: Text(
+                                  '${AppStrings.instructorPrefix} ${course.instructor}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],

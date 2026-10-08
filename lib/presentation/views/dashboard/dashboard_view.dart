@@ -10,190 +10,108 @@ import 'widgets/offline_banner.dart';
 class DashboardView extends GetView<DashboardController> {
   const DashboardView({super.key});
 
+  void _confirmSignOut() {
+    Get.defaultDialog(
+      title: 'Sign Out',
+      middleText: 'Are you sure you want to sign out?',
+      textConfirm: 'Sign Out',
+      textCancel: 'Cancel',
+      confirmTextColor: Colors.white,
+      buttonColor: AppColors.error,
+      onConfirm: () {
+        Get.back();
+        controller.logout();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.auto_stories_rounded, color: AppColors.primary, size: 26),
-            SizedBox(width: 10),
-            Text(AppStrings.dashboardTitle),
-          ],
-        ),
+        title: const Text(AppStrings.dashboardTitle),
         actions: [
-          // Live Network Status Icon
-          Obx(
-            () => IconButton(
-              tooltip: controller.isOffline.value ? 'Offline mode' : 'Online mode',
-              icon: Icon(
+          IconButton(
+            tooltip: 'Network status',
+            icon: Obx(
+              () => Icon(
                 controller.isOffline.value ? Icons.wifi_off_rounded : Icons.wifi_rounded,
                 color: controller.isOffline.value ? AppColors.warning : AppColors.success,
               ),
-              onPressed: controller.toggleSimulatedOffline,
             ),
+            onPressed: controller.toggleSimulatedOffline,
           ),
-          // Logout Button
-          IconButton(
-            tooltip: 'Sign Out',
-            icon: const Icon(Icons.logout_rounded, color: AppColors.textSecondary),
-            onPressed: () {
-              Get.defaultDialog(
-                title: 'Sign Out',
-                middleText: 'Are you sure you want to sign out?',
-                textConfirm: 'Sign Out',
-                textCancel: 'Cancel',
-                confirmTextColor: Colors.white,
-                buttonColor: AppColors.error,
-                onConfirm: () {
-                  Get.back();
-                  controller.logout();
-                },
-              );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, color: AppColors.textSecondary),
+            tooltip: 'More options',
+            onSelected: (value) {
+              if (value == 'offline') controller.toggleSimulatedOffline();
+              if (value == 'error') controller.toggleSimulateFailure();
+              if (value == 'empty') controller.toggleSimulateEmpty();
+              if (value == 'logout') _confirmSignOut();
             },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'offline',
+                child: Text(controller.isOffline.value ? 'Go Online' : 'Simulate Offline'),
+              ),
+              PopupMenuItem(
+                value: 'error',
+                child: Text(controller.simulateFailure.value ? 'Reset API' : 'Simulate API Error'),
+              ),
+              PopupMenuItem(
+                value: 'empty',
+                child: Text(controller.simulateEmpty.value ? 'Reset List' : 'Simulate Empty List'),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Text('Sign Out', style: TextStyle(color: AppColors.error)),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Evaluator Interactive Sandbox Bar
-            _buildEvaluatorControls(context),
+        child: RefreshIndicator(
+          onRefresh: () => controller.loadCourses(forceRefresh: true),
+          color: AppColors.primary,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
 
-            // Main Dashboard Body with StateMixin
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () => controller.loadCourses(forceRefresh: true),
-                color: AppColors.primary,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      // Offline Status Banner
-                      Obx(
-                        () => OfflineBanner(
-                          isOffline: controller.isOffline.value,
-                          onToggleOffline: controller.toggleSimulatedOffline,
-                        ),
-                      ),
-
-                      // State Handling: Loading / Error / Empty / Success
-                      Expanded(
-                        child: controller.obx(
-                          (courses) => _buildCourseList(courses ?? []),
-                          onLoading: _buildLoadingState(),
-                          onError: (error) => _buildErrorState(error ?? 'An unknown error occurred'),
-                          onEmpty: _buildEmptyState(),
-                        ),
-                      ),
-                    ],
+                // Offline status banner (only displays when offline)
+                Obx(
+                  () => OfflineBanner(
+                    isOffline: controller.isOffline.value,
+                    onToggleOffline: controller.toggleSimulatedOffline,
                   ),
                 ),
-              ),
+
+                // Dynamic UI states via StateMixin
+                Expanded(
+                  child: controller.obx(
+                    (courses) => _buildCourseList(courses ?? []),
+                    onLoading: _buildLoadingState(),
+                    onError: (error) => _buildErrorState(error ?? 'An unknown error occurred'),
+                    onEmpty: _buildEmptyState(),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  /// Evaluator Test Toolbar to switch between all required assessment states
-  Widget _buildEvaluatorControls(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceVariant,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          const Text(
-            'Test States:',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  Obx(
-                    () => FilterChip(
-                      selected: controller.isOffline.value,
-                      label: Text(controller.isOffline.value ? 'Offline: ON' : 'Offline: OFF'),
-                      avatar: Icon(
-                        controller.isOffline.value ? Icons.wifi_off : Icons.wifi,
-                        size: 14,
-                        color: controller.isOffline.value ? Colors.white : AppColors.textSecondary,
-                      ),
-                      selectedColor: AppColors.warning,
-                      labelStyle: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: controller.isOffline.value ? Colors.white : AppColors.textPrimary,
-                      ),
-                      onSelected: (_) => controller.toggleSimulatedOffline(),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Obx(
-                    () => FilterChip(
-                      selected: controller.simulateFailure.value,
-                      label: const Text('Simulate API 500 Error'),
-                      avatar: Icon(
-                        Icons.error_outline,
-                        size: 14,
-                        color: controller.simulateFailure.value ? Colors.white : AppColors.textSecondary,
-                      ),
-                      selectedColor: AppColors.error,
-                      labelStyle: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: controller.simulateFailure.value ? Colors.white : AppColors.textPrimary,
-                      ),
-                      onSelected: (_) => controller.toggleSimulateFailure(),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Obx(
-                    () => FilterChip(
-                      selected: controller.simulateEmpty.value,
-                      label: const Text('Simulate Empty State'),
-                      avatar: Icon(
-                        Icons.inbox_outlined,
-                        size: 14,
-                        color: controller.simulateEmpty.value ? Colors.white : AppColors.textSecondary,
-                      ),
-                      selectedColor: AppColors.info,
-                      labelStyle: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: controller.simulateEmpty.value ? Colors.white : AppColors.textPrimary,
-                      ),
-                      onSelected: (_) => controller.toggleSimulateEmpty(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Success State: List of courses
   Widget _buildCourseList(List<CourseModel> courses) {
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(top: 12, bottom: 24),
+      padding: const EdgeInsets.only(bottom: 24),
       itemCount: courses.length,
       itemBuilder: (context, index) {
         final course = courses[index];
@@ -205,11 +123,9 @@ class DashboardView extends GetView<DashboardController> {
     );
   }
 
-  /// Loading State: Skeleton loading cards
   Widget _buildLoadingState() {
     return ListView.builder(
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(top: 12),
       itemCount: 3,
       itemBuilder: (context, index) {
         return Container(
@@ -276,7 +192,6 @@ class DashboardView extends GetView<DashboardController> {
     );
   }
 
-  /// Empty State
   Widget _buildEmptyState() {
     return Center(
       child: SingleChildScrollView(
@@ -331,7 +246,6 @@ class DashboardView extends GetView<DashboardController> {
     );
   }
 
-  /// Error State with Retry Button
   Widget _buildErrorState(String errorMessage) {
     return Center(
       child: SingleChildScrollView(

@@ -183,53 +183,14 @@ class LoginView extends GetView<AuthController> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Reviewer Test Shortcut Chips
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.developer_mode_rounded, size: 16, color: AppColors.textSecondary),
-                              SizedBox(width: 6),
-                              Text(
-                                'Evaluator Test Shortcuts',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              ActionChip(
-                                avatar: const Icon(Icons.check_circle_outline, size: 16, color: AppColors.success),
-                                label: const Text('Valid Login (Success)'),
-                                labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                backgroundColor: Colors.white,
-                                onPressed: controller.setDemoValid,
-                              ),
-                              ActionChip(
-                                avatar: const Icon(Icons.highlight_off, size: 16, color: AppColors.error),
-                                label: const Text('Invalid Login (Error State)'),
-                                labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                backgroundColor: Colors.white,
-                                onPressed: controller.setDemoInvalid,
-                              ),
-                            ],
-                          ),
-                        ],
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Text(
+                        'Demo: learner@example.com / password123',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted.withValues(alpha: 0.9),
+                        ),
                       ),
                     ),
                   ],

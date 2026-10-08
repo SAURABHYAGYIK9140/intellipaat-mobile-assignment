@@ -24,28 +24,24 @@ class CourseRepositoryImpl implements CourseRepository {
     bool simulateFailure = false,
     bool simulateEmpty = false,
   }) async {
-    // 1. If currently offline, directly serve from local persistent cache
     if (!_networkInfo.isConnected) {
       final cachedCourses = await _localDataSource.getCachedCourses();
       if (cachedCourses.isNotEmpty) {
         return Success(cachedCourses);
       }
       return const Failure(
-        message: 'You are offline and no cached courses are available. Please connect once to sync.',
+        message: 'No internet connection and no cached courses found.',
         statusCode: 503,
       );
     }
 
-    // 2. Online: Try remote API fetch
     try {
       final remoteCourses = await _remoteDataSource.fetchCourses(
         simulateFailure: simulateFailure,
         simulateEmpty: simulateEmpty,
       );
 
-      // On successful fetch, sync/cache into local storage
       if (remoteCourses.isNotEmpty) {
-        // If we already had cached progress for these courses, preserve the user's lesson progress!
         final existingCache = await _localDataSource.getCachedCourses();
         final mergedCourses = _mergeWithCachedProgress(remoteCourses, existingCache);
         await _localDataSource.cacheCourses(mergedCourses);
@@ -54,7 +50,7 @@ class CourseRepositoryImpl implements CourseRepository {
         return const Success([]);
       }
     } catch (e) {
-      // 3. Graceful Offline/Error Fallback: If remote API fails, fall back to local cache if available
+      // Fallback to offline cache if remote request fails
       final cachedCourses = await _localDataSource.getCachedCourses();
       if (cachedCourses.isNotEmpty) {
         return Success(cachedCourses);

@@ -10,36 +10,23 @@ class AuthController extends GetxController {
   AuthController({required AuthRepository authRepository})
       : _authRepository = authRepository;
 
-  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
-  final RxBool isLoading = false.obs;
-  final RxString errorMessage = ''.obs;
-  final RxBool isPasswordVisible = false.obs;
+  final isLoading = false.obs;
+  final errorMessage = ''.obs;
+  final isPasswordVisible = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    // Pre-fill valid test credentials for fast reviewer evaluation
     emailController.text = 'learner@example.com';
     passwordController.text = 'password123';
   }
 
   void togglePasswordVisibility() {
     isPasswordVisible.value = !isPasswordVisible.value;
-  }
-
-  void setDemoValid() {
-    emailController.text = 'learner@example.com';
-    passwordController.text = 'password123';
-    errorMessage.value = '';
-  }
-
-  void setDemoInvalid() {
-    emailController.text = 'learner@example.com';
-    passwordController.text = 'wrongpassword';
-    errorMessage.value = '';
   }
 
   Future<void> login() async {
