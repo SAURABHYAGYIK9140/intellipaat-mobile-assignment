@@ -38,6 +38,9 @@ dependencies:
   get_storage: ^2.1.1
   connectivity_plus: ^7.3.2
 
+dependency_overrides:
+  path_provider_foundation: 2.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
