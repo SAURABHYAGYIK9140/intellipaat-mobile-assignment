@@ -144,7 +144,7 @@ void main() {
       expect(result, isA<Failure<List<CourseModel>>>());
       final failure = result as Failure<List<CourseModel>>;
       expect(failure.statusCode, 503);
-      expect(failure.message, contains('offline'));
+      expect(failure.message, contains('No internet connection'));
     });
 
     test('When online but remote API fails, gracefully falls back to local cache', () async {
